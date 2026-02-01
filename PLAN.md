@@ -177,30 +177,30 @@ stock-process ./raw-photos/ --no-logo-removal
 
 ## Development Phases
 
-### Phase 1: Core Pipeline (MVP)
-- [ ] Project setup (pyproject.toml, dependencies)
-- [ ] RAW file loading (CR2, DNG) and JPEG input support
-- [ ] Traditional image processing (sharpen, denoise, resize)
-- [ ] sRGB color space conversion
-- [ ] JPEG export with quality settings
-- [ ] Basic CLI interface
+### Phase 1: Core Pipeline (MVP) ✅ COMPLETE
+- [x] Project setup (pyproject.toml, dependencies)
+- [x] RAW file loading (CR2, DNG) and JPEG input support
+- [x] Traditional image processing (sharpen, denoise, resize)
+- [x] sRGB color space conversion
+- [x] JPEG export with quality settings
+- [x] Basic CLI interface
 
-### Phase 2: Content Removal
-- [ ] Face detection and blurring
+### Phase 2: Content Removal 🔄 IN PROGRESS
+- [x] Face detection and blurring (OpenCV fallback + optional face_recognition)
 - [ ] Logo/trademark detection via Claude Vision
 - [ ] Inpainting/removal of detected content
 - [ ] Quality checks to ensure photorealistic output
 
-### Phase 3: AI Metadata
-- [ ] Claude Vision API integration for analysis
-- [ ] Title generation (concise, descriptive)
-- [ ] Description generation (thorough, unique)
-- [ ] Keyword generation (42-47 stock-optimized tags)
-- [ ] IPTC metadata embedding
+### Phase 3: AI Metadata ✅ COMPLETE
+- [x] Claude Vision API integration for analysis
+- [x] Title generation (concise, descriptive)
+- [x] Description generation (thorough, unique)
+- [x] Keyword generation (42-47 stock-optimized tags)
+- [x] IPTC metadata embedding
 
 ### Phase 4: Polish
-- [ ] Batch progress tracking with rich CLI output
-- [ ] Configuration file support
+- [x] Batch progress tracking with rich CLI output
+- [ ] Configuration file support (YAML loading)
 - [ ] Error handling and recovery (resume failed batches)
 - [ ] CSV summary export
 
@@ -228,16 +228,13 @@ All image processing runs locally - no cloud compute costs. Only API costs are f
   - Bug fixes and refinements
 
 ### Commit Milestone Plan
-1. `Initial project setup` - pyproject.toml, folder structure, dependencies
-2. `Add RAW file handling` - CR2/DNG loading with rawpy
-3. `Add traditional image processing` - sharpen, denoise, resize, sRGB
-4. `Add JPEG export` - quality 100, basic CLI working
-5. `Add face detection and blurring` - face_recognition integration
-6. `Add logo detection` - Claude Vision API integration
-7. `Add logo localization` - GroundingDINO integration
-8. `Add logo segmentation and removal` - SAM + LaMa inpainting
-9. `Add AI metadata generation` - titles, descriptions, keywords
-10. `Add IPTC embedding` - author, copyright, full metadata
-11. `Add batch processing and progress` - rich CLI output
-12. `Add configuration file support` - YAML config loading
-13. `Polish and error handling` - recovery, edge cases
+1. ✅ `d905e7d` - Initial project setup (plan document)
+2. ✅ `0f7dd8d` - Add project structure and module scaffolding
+3. ✅ `2092e5e` - Add Claude Vision API integration and face detection
+   - RAW/JPEG loading, traditional processing, face blur, metadata generation, IPTC embedding
+4. ⬜ `Add logo detection` - Claude Vision API for logo identification
+5. ⬜ `Add logo localization` - GroundingDINO integration
+6. ⬜ `Add logo segmentation and removal` - SAM + LaMa inpainting
+7. ⬜ `Add configuration file support` - YAML config loading from CLI
+8. ⬜ `Add CSV summary export` - batch summary for review
+9. ⬜ `Polish and error handling` - recovery, edge cases
