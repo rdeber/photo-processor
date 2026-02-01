@@ -72,6 +72,8 @@ stock-process <input> [OPTIONS]
 | `--brightness` | `-b` | `0.45` | Target brightness (0-1 scale) |
 | `--contrast` | | `1.1` | Contrast strength (1.0 = no change) |
 | `--straighten` | `-s` | `auto` | Geometry: auto (H+V+perspective), horizontal, vertical, none |
+| `--straighten-sensitivity` | | `1.0` | Line detection sensitivity (0.5=strict, 2.0=loose) |
+| `--straighten-max-angle` | | `15` | Maximum rotation angle in degrees |
 | `--min-size` | | `4000` | Minimum dimension in pixels |
 | `--config` | `-c` | | Path to custom config file |
 | `--no-face-blur` | | | Disable face detection and blurring |
@@ -112,6 +114,100 @@ stock-process ./photos/ --no-logo-removal
 
 # Use a custom config file
 stock-process ./photos/ --config my-settings.yaml
+
+# Fine-tune straighten for complex scenes (more aggressive detection)
+stock-process image.jpg --straighten-sensitivity 1.5
+
+# Conservative straightening (only very confident corrections)
+stock-process image.jpg --straighten-sensitivity 0.5 --straighten-max-angle 5
+```
+
+## Auto-Straighten Algorithm
+
+The auto-straighten feature automatically corrects tilted horizons, leaning verticals, and perspective distortion using computer vision. Here's how it works:
+
+### How It Works
+
+The algorithm uses a two-pass approach:
+
+**Pass 1: Rotation Correction**
+1. **Edge Detection**: Uses Canny edge detection to find edges in the image
+2. **Line Detection**: Uses Hough transform to find straight lines
+3. **Line Classification**: Lines are classified as horizontal (within 15° of level) or vertical (within 15° of upright)
+4. **Length-Weighted Averaging**: Each line's angle is weighted by its pixel length. Longer lines (building edges, door frames) have more influence than short lines (window frames, fire escape details)
+5. **Rotation**: The image is rotated to correct the weighted average tilt
+6. **Cropping**: Border artifacts are cropped away
+
+**Pass 2: Perspective Correction** (auto mode only)
+1. **Vertical Line Analysis**: Vertical lines are separated into left-half and right-half of the image
+2. **Convergence Detection**: Measures if verticals are converging (typical of looking up at buildings)
+3. **Perspective Transform**: Applies a transform to make verticals parallel
+
+### Straighten Modes
+
+| Mode | Description |
+|------|-------------|
+| `auto` | Full correction: horizontal leveling + vertical straightening + perspective correction |
+| `horizontal` | Only level the horizon (useful for landscapes, seascapes) |
+| `vertical` | Only straighten vertical lines (useful for architecture with intentional horizon tilt) |
+| `none` | Skip all geometry correction |
+
+### Tuning Parameters
+
+#### `straighten_sensitivity` (default: 1.0)
+
+Controls how aggressively lines are detected:
+
+| Value | Behavior |
+|-------|----------|
+| `0.5` | **Strict**: Requires longer, more prominent lines. Better for noisy scenes with lots of small details |
+| `1.0` | **Normal**: Balanced detection for typical photos |
+| `1.5-2.0` | **Loose**: Detects more/shorter lines. Better for images with few structural elements |
+
+How sensitivity affects detection:
+- **Canny edge thresholds**: Lower sensitivity = higher thresholds = fewer edges detected
+- **Minimum line length**: Lower sensitivity = longer minimum = only prominent lines
+- **Hough threshold**: Lower sensitivity = higher threshold = stricter line detection
+
+#### `straighten_max_angle` (default: 15.0)
+
+Maximum rotation angle the algorithm will apply. If the calculated correction exceeds this, it's skipped entirely (assumes the image is intentionally tilted or the algorithm misdetected).
+
+| Value | Use Case |
+|-------|----------|
+| `5.0` | Conservative: Only correct small tilts, preserve artistic angles |
+| `15.0` | Normal: Correct most accidental tilts |
+| `25.0` | Aggressive: Correct even significant tilts |
+
+### Troubleshooting
+
+**Image not being straightened:**
+- The algorithm may not detect enough lines. Try `--straighten-sensitivity 1.5` to detect more lines
+- The correction may be too small (< 0.05°) and is being skipped
+- The correction may exceed `max_angle` and is being skipped
+
+**Over-correction / Wrong direction:**
+- The algorithm may be detecting non-structural lines (fire escapes, window details). Try `--straighten-sensitivity 0.5` to focus on longer lines only
+- For complex urban scenes, the median of detected lines may not represent true vertical. Consider using `--straighten horizontal` for just horizon leveling
+
+**Too much cropping:**
+- Larger rotations require more cropping to remove border artifacts
+- Use `--straighten-max-angle 5` to limit rotation and preserve more of the image
+
+### Example Workflows
+
+```bash
+# Architecture photography (prioritize vertical correction)
+stock-process buildings.jpg --straighten auto --straighten-sensitivity 0.7
+
+# Landscape photography (just level the horizon)
+stock-process landscape.jpg --straighten horizontal
+
+# Complex urban scene (conservative, long lines only)
+stock-process street.jpg --straighten-sensitivity 0.5 --straighten-max-angle 10
+
+# Trust the algorithm fully (aggressive correction)
+stock-process photo.jpg --straighten-sensitivity 1.5 --straighten-max-angle 20
 ```
 
 ## Configuration
@@ -139,8 +235,10 @@ Settings can be configured via YAML file. The default config is at `config/defau
 | `auto_exposure` | `true` | Automatic brightness/contrast adjustment |
 | `target_brightness` | `0.45` | Target mean brightness (0-1 scale) |
 | `contrast_strength` | `1.1` | Contrast multiplier (1.0 = no change) |
-| **Geometry** | | |
+| **Geometry (Auto-Straighten)** | | |
 | `straighten_mode` | `auto` | auto (H+V+perspective), horizontal, vertical, none |
+| `straighten_sensitivity` | `1.0` | Line detection: 0.5=strict (long lines), 2.0=loose (more lines) |
+| `straighten_max_angle` | `15.0` | Maximum rotation angle in degrees (skip if exceeded) |
 | **Metadata** | | |
 | `keywords_min` | `42` | Minimum keywords to generate |
 | `keywords_max` | `47` | Maximum keywords to generate |
@@ -160,8 +258,10 @@ auto_exposure: true
 target_brightness: 0.50
 contrast_strength: 1.15
 
-# Geometry - auto levels horizon + verticals + perspective
+# Geometry correction
 straighten_mode: auto
+straighten_sensitivity: 1.0    # 0.5=strict, 2.0=loose
+straighten_max_angle: 15.0     # Max degrees of rotation
 
 # Processing
 sharpen_amount: 1.0

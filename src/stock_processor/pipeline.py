@@ -112,6 +112,8 @@ class ProcessingPipeline:
             target_brightness=self.config.target_brightness,
             contrast_strength=self.config.contrast_strength,
             straighten_mode=self.config.straighten_mode,
+            straighten_sensitivity=self.config.straighten_sensitivity,
+            straighten_max_angle=self.config.straighten_max_angle,
         )
 
     def _blur_faces(self, image):

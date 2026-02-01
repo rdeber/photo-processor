@@ -62,6 +62,18 @@ console = Console()
     default=None,
     help="Geometry correction mode (default: auto)"
 )
+@click.option(
+    "--straighten-sensitivity",
+    type=float,
+    default=None,
+    help="Line detection sensitivity: 0.5=strict (fewer lines), 2.0=loose (more lines). Default: 1.0"
+)
+@click.option(
+    "--straighten-max-angle",
+    type=float,
+    default=None,
+    help="Maximum rotation angle in degrees. Corrections exceeding this are skipped. Default: 15"
+)
 def main(
     input_path: Path,
     output: Path | None,
@@ -72,6 +84,8 @@ def main(
     brightness: float | None,
     contrast: float | None,
     straighten: str | None,
+    straighten_sensitivity: float | None,
+    straighten_max_angle: float | None,
 ) -> None:
     """Process stock photos for upload.
 
@@ -106,6 +120,12 @@ def main(
     if straighten is not None:
         pipeline.config.straighten_mode = straighten
         console.print(f"Straighten: {straighten}")
+    if straighten_sensitivity is not None:
+        pipeline.config.straighten_sensitivity = straighten_sensitivity
+        console.print(f"Straighten sensitivity: {straighten_sensitivity}")
+    if straighten_max_angle is not None:
+        pipeline.config.straighten_max_angle = straighten_max_angle
+        console.print(f"Straighten max angle: {straighten_max_angle}°")
 
     if input_path.is_file():
         pipeline.process_single(input_path)

@@ -30,8 +30,10 @@ class Config(BaseModel):
     target_brightness: float = 0.45
     contrast_strength: float = 1.1
 
-    # Geometry correction
+    # Geometry correction (auto-straighten)
     straighten_mode: str = "auto"  # "auto", "horizontal", "vertical", "none"
+    straighten_sensitivity: float = 1.0  # Line detection sensitivity (0.5=strict, 2.0=loose)
+    straighten_max_angle: float = 15.0  # Maximum rotation angle to apply (degrees)
 
     # Metadata
     keywords_min: int = 42
