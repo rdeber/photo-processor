@@ -158,6 +158,7 @@ stock-process ./raw-photos/ --no-logo-removal
 | `auto_exposure` | true | Automatic brightness/contrast adjustment |
 | `target_brightness` | 0.45 | Target mean brightness (0-1 scale) |
 | `contrast_strength` | 1.1 | Contrast multiplier (1.0 = no change) |
+| `straighten_mode` | auto | Geometry correction: auto, horizontal, vertical, none |
 | `keywords_min` | 42 | Minimum keywords to generate |
 | `keywords_max` | 47 | Maximum keywords to generate |
 | `author_name` | Ryan DeBerardinis | Photographer name for IPTC Creator field |
@@ -188,6 +189,7 @@ stock-process ./raw-photos/ --no-logo-removal
 - [x] Traditional image processing (sharpen, denoise, resize)
 - [x] Auto white balance (gray world algorithm)
 - [x] Auto exposure (brightness/contrast adjustment)
+- [x] Auto straighten (horizon leveling, vertical correction)
 - [x] sRGB color space conversion
 - [x] JPEG export with quality settings
 - [x] Basic CLI interface

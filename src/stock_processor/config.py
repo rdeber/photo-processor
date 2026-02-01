@@ -30,6 +30,9 @@ class Config(BaseModel):
     target_brightness: float = 0.45
     contrast_strength: float = 1.1
 
+    # Geometry correction
+    straighten_mode: str = "auto"  # "auto", "horizontal", "vertical", "none"
+
     # Metadata
     keywords_min: int = 42
     keywords_max: int = 47

@@ -22,6 +22,9 @@ auto_exposure: true        # Automatic brightness/contrast adjustment
 target_brightness: 0.45    # Target mean brightness (0-1 scale)
 contrast_strength: 1.1     # Contrast multiplier (1.0 = no change)
 
+# Geometry correction
+straighten_mode: auto      # auto, horizontal, vertical, or none
+
 # Metadata generation
 keywords_min: 42
 keywords_max: 47

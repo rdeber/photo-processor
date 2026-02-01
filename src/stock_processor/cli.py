@@ -56,6 +56,12 @@ console = Console()
     default=None,
     help="Contrast strength (1.0 = no change, default: 1.1)"
 )
+@click.option(
+    "--straighten", "-s",
+    type=click.Choice(["auto", "horizontal", "vertical", "none"]),
+    default=None,
+    help="Geometry correction mode (default: auto)"
+)
 def main(
     input_path: Path,
     output: Path | None,
@@ -65,6 +71,7 @@ def main(
     config: Path | None,
     brightness: float | None,
     contrast: float | None,
+    straighten: str | None,
 ) -> None:
     """Process stock photos for upload.
 
@@ -96,6 +103,9 @@ def main(
     if contrast is not None:
         pipeline.config.contrast_strength = contrast
         console.print(f"Contrast: {contrast}")
+    if straighten is not None:
+        pipeline.config.straighten_mode = straighten
+        console.print(f"Straighten: {straighten}")
 
     if input_path.is_file():
         pipeline.process_single(input_path)

@@ -14,6 +14,7 @@ def process_image(
     auto_exposure: bool = True,
     target_brightness: float = 0.45,
     contrast_strength: float = 1.1,
+    straighten_mode: str = "auto",
 ) -> np.ndarray:
     """Apply traditional image processing pipeline.
 
@@ -26,6 +27,7 @@ def process_image(
         auto_exposure: Automatically adjust brightness and contrast
         target_brightness: Target mean brightness (0-1 scale, default 0.45)
         contrast_strength: Contrast multiplier (1.0 = no change, >1 = more contrast)
+        straighten_mode: Geometry correction mode - "auto", "horizontal", "vertical", or "none"
 
     Returns:
         Processed image as numpy array (RGB, sRGB color space)
@@ -34,26 +36,30 @@ def process_image(
     if image.dtype != np.uint8:
         image = (image * 255).astype(np.uint8)
 
-    # Step 1: Auto white balance (before other adjustments)
+    # Step 1: Auto straighten (before other processing to avoid artifacts)
+    if straighten_mode != "none":
+        image = _auto_straighten(image, mode=straighten_mode)
+
+    # Step 2: Auto white balance (before other adjustments)
     if auto_white_balance:
         image = _auto_white_balance(image)
 
-    # Step 2: Auto exposure (brightness and contrast)
+    # Step 3: Auto exposure (brightness and contrast)
     if auto_exposure:
         image = _auto_brightness_contrast(image, target_brightness, contrast_strength)
 
-    # Step 3: Denoise (if enabled)
+    # Step 4: Denoise (if enabled)
     if denoise_strength > 0:
         image = _denoise(image, denoise_strength)
 
-    # Step 4: Resize to meet minimum dimension
+    # Step 5: Resize to meet minimum dimension
     image = _resize(image, min_dimension)
 
-    # Step 5: Sharpen (if enabled)
+    # Step 6: Sharpen (if enabled)
     if sharpen_amount > 0:
         image = _sharpen(image, sharpen_amount)
 
-    # Step 6: Ensure sRGB color space
+    # Step 7: Ensure sRGB color space
     image = _ensure_srgb(image)
 
     return image
@@ -140,6 +146,115 @@ def _auto_brightness_contrast(
     bgr_result = cv2.cvtColor(lab_adjusted, cv2.COLOR_LAB2BGR)
 
     return cv2.cvtColor(bgr_result, cv2.COLOR_BGR2RGB)
+
+
+def _auto_straighten(image: np.ndarray, mode: str = "auto") -> np.ndarray:
+    """Automatically straighten image based on detected lines.
+
+    Uses Hough line detection to find dominant horizontal and vertical lines,
+    then rotates/corrects the image to level them.
+
+    Args:
+        image: Input RGB image
+        mode: "auto" (both H+V), "horizontal" (horizon only), "vertical" (verticals only)
+
+    Returns:
+        Straightened and cropped image
+    """
+    h, w = image.shape[:2]
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    # Edge detection
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+
+    # Detect lines using Hough transform
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=100,
+        minLineLength=min(w, h) // 8,
+        maxLineGap=20,
+    )
+
+    if lines is None:
+        return image
+
+    # Separate horizontal and vertical line angles
+    horizontal_angles = []
+    vertical_angles = []
+
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+
+        # Horizontal lines: angles near 0 or 180
+        if abs(angle) < 30 or abs(angle) > 150:
+            # Normalize to deviation from horizontal
+            if abs(angle) > 90:
+                angle = angle - 180 if angle > 0 else angle + 180
+            horizontal_angles.append(angle)
+
+        # Vertical lines: angles near 90 or -90
+        elif 60 < abs(angle) < 120:
+            # Normalize to deviation from vertical
+            deviation = angle - 90 if angle > 0 else angle + 90
+            vertical_angles.append(deviation)
+
+    # Calculate rotation angle based on mode
+    rotation_angle = 0.0
+
+    if mode in ("auto", "horizontal") and horizontal_angles:
+        # Use median to be robust against outliers
+        h_correction = np.median(horizontal_angles)
+        rotation_angle = -h_correction
+
+    if mode in ("auto", "vertical") and vertical_angles:
+        v_correction = np.median(vertical_angles)
+        # For auto mode, average with horizontal if both detected
+        if mode == "auto" and horizontal_angles:
+            rotation_angle = (rotation_angle - v_correction) / 2
+        else:
+            rotation_angle = -v_correction
+
+    # Only apply if correction is meaningful but not too extreme
+    if abs(rotation_angle) < 0.1 or abs(rotation_angle) > 15:
+        return image
+
+    # Apply rotation
+    center = (w // 2, h // 2)
+    rotation_matrix = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
+
+    # Calculate new bounding box to avoid cropping
+    cos_angle = abs(np.cos(np.radians(rotation_angle)))
+    sin_angle = abs(np.sin(np.radians(rotation_angle)))
+    new_w = int(h * sin_angle + w * cos_angle)
+    new_h = int(h * cos_angle + w * sin_angle)
+
+    # Adjust rotation matrix for new size
+    rotation_matrix[0, 2] += (new_w - w) / 2
+    rotation_matrix[1, 2] += (new_h - h) / 2
+
+    # Rotate with white background (will be cropped)
+    rotated = cv2.warpAffine(
+        image,
+        rotation_matrix,
+        (new_w, new_h),
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+
+    # Crop to remove border artifacts - calculate largest inscribed rectangle
+    crop_margin = int(max(w, h) * abs(np.sin(np.radians(rotation_angle))))
+    crop_x = crop_margin
+    crop_y = crop_margin
+    crop_w = new_w - 2 * crop_margin
+    crop_h = new_h - 2 * crop_margin
+
+    # Ensure valid crop dimensions
+    if crop_w > 0 and crop_h > 0:
+        rotated = rotated[crop_y : crop_y + crop_h, crop_x : crop_x + crop_w]
+
+    return rotated
 
 
 def _denoise(image: np.ndarray, strength: int) -> np.ndarray:
