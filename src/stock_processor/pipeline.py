@@ -107,6 +107,10 @@ class ProcessingPipeline:
             min_dimension=self.min_dimension,
             sharpen_amount=self.config.sharpen_amount,
             denoise_strength=self.config.denoise_strength,
+            auto_white_balance=self.config.auto_white_balance,
+            auto_exposure=self.config.auto_exposure,
+            target_brightness=self.config.target_brightness,
+            contrast_strength=self.config.contrast_strength,
         )
 
     def _blur_faces(self, image):

@@ -34,11 +34,12 @@ A local CLI-based image processing pipeline for stock photography workflow autom
                           │                   │
                    ┌──────┴──────┐     ┌──────┴──────┐
                    │ NON-AI:     │     │ AI-POWERED: │
-                   │ • Sharpen   │     │ • Face blur │
-                   │ • Denoise   │     │ • Logo/TM   │
+                   │ • Auto WB   │     │ • Face blur │
+                   │ • Auto exp  │     │ • Logo/TM   │
+                   │ • Sharpen   │     │   removal   │
+                   │ • Denoise   │     │ • Sign text │
                    │ • Resize    │     │   removal   │
-                   │ • Color/sRGB│     │ • Sign text │
-                   │ • Crop      │     │   removal   │
+                   │ • Color/sRGB│     │             │
                    └─────────────┘     └─────────────┘
 ```
 
@@ -153,6 +154,10 @@ stock-process ./raw-photos/ --no-logo-removal
 | `remove_signs` | true | Detect and remove store signs/text |
 | `sharpen_amount` | 1.0 | Unsharp mask intensity (subtle) |
 | `denoise_strength` | 5 | Non-local means denoising (conservative) |
+| `auto_white_balance` | true | Gray world white balance correction |
+| `auto_exposure` | true | Automatic brightness/contrast adjustment |
+| `target_brightness` | 0.45 | Target mean brightness (0-1 scale) |
+| `contrast_strength` | 1.1 | Contrast multiplier (1.0 = no change) |
 | `keywords_min` | 42 | Minimum keywords to generate |
 | `keywords_max` | 47 | Maximum keywords to generate |
 | `author_name` | Ryan DeBerardinis | Photographer name for IPTC Creator field |
@@ -181,6 +186,8 @@ stock-process ./raw-photos/ --no-logo-removal
 - [x] Project setup (pyproject.toml, dependencies)
 - [x] RAW file loading (CR2, DNG) and JPEG input support
 - [x] Traditional image processing (sharpen, denoise, resize)
+- [x] Auto white balance (gray world algorithm)
+- [x] Auto exposure (brightness/contrast adjustment)
 - [x] sRGB color space conversion
 - [x] JPEG export with quality settings
 - [x] Basic CLI interface
@@ -228,13 +235,16 @@ All image processing runs locally - no cloud compute costs. Only API costs are f
   - Bug fixes and refinements
 
 ### Commit Milestone Plan
-1. ✅ `d905e7d` - Initial project setup (plan document)
-2. ✅ `0f7dd8d` - Add project structure and module scaffolding
-3. ✅ `2092e5e` - Add Claude Vision API integration and face detection
-   - RAW/JPEG loading, traditional processing, face blur, metadata generation, IPTC embedding
-4. ⬜ `Add logo detection` - Claude Vision API for logo identification
-5. ⬜ `Add logo localization` - GroundingDINO integration
-6. ⬜ `Add logo segmentation and removal` - SAM + LaMa inpainting
-7. ⬜ `Add configuration file support` - YAML config loading from CLI
-8. ⬜ `Add CSV summary export` - batch summary for review
-9. ⬜ `Polish and error handling` - recovery, edge cases
+1. `Initial project setup` - pyproject.toml, folder structure, dependencies
+2. `Add RAW file handling` - CR2/DNG loading with rawpy
+3. `Add traditional image processing` - sharpen, denoise, resize, sRGB
+4. `Add JPEG export` - quality 100, basic CLI working
+5. `Add face detection and blurring` - face_recognition integration
+6. `Add logo detection` - Claude Vision API integration
+7. `Add logo localization` - GroundingDINO integration
+8. `Add logo segmentation and removal` - SAM + LaMa inpainting
+9. `Add AI metadata generation` - titles, descriptions, keywords
+10. `Add IPTC embedding` - author, copyright, full metadata
+11. `Add batch processing and progress` - rich CLI output
+12. `Add configuration file support` - YAML config loading
+13. `Polish and error handling` - recovery, edge cases

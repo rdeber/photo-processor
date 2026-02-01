@@ -24,6 +24,12 @@ class Config(BaseModel):
     sharpen_amount: float = 1.0
     denoise_strength: int = 5
 
+    # Auto exposure correction
+    auto_white_balance: bool = True
+    auto_exposure: bool = True
+    target_brightness: float = 0.45
+    contrast_strength: float = 1.1
+
     # Metadata
     keywords_min: int = 42
     keywords_max: int = 47

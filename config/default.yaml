@@ -16,6 +16,12 @@ remove_signs: true
 sharpen_amount: 1.0  # Unsharp mask intensity (0 = none)
 denoise_strength: 5  # Non-local means denoising (0 = none)
 
+# Auto exposure correction
+auto_white_balance: true   # Gray world white balance correction
+auto_exposure: true        # Automatic brightness/contrast adjustment
+target_brightness: 0.45    # Target mean brightness (0-1 scale)
+contrast_strength: 1.1     # Contrast multiplier (1.0 = no change)
+
 # Metadata generation
 keywords_min: 42
 keywords_max: 47
