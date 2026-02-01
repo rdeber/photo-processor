@@ -44,6 +44,18 @@ console = Console()
     default=None,
     help="Path to configuration file"
 )
+@click.option(
+    "--brightness", "-b",
+    type=float,
+    default=None,
+    help="Target brightness (0-1 scale, default: 0.45)"
+)
+@click.option(
+    "--contrast",
+    type=float,
+    default=None,
+    help="Contrast strength (1.0 = no change, default: 1.1)"
+)
 def main(
     input_path: Path,
     output: Path | None,
@@ -51,6 +63,8 @@ def main(
     no_logo_removal: bool,
     min_size: int,
     config: Path | None,
+    brightness: float | None,
+    contrast: float | None,
 ) -> None:
     """Process stock photos for upload.
 
@@ -74,6 +88,14 @@ def main(
         min_dimension=min_size,
         config_path=config,
     )
+
+    # Apply CLI overrides to config
+    if brightness is not None:
+        pipeline.config.target_brightness = brightness
+        console.print(f"Brightness: {brightness}")
+    if contrast is not None:
+        pipeline.config.contrast_strength = contrast
+        console.print(f"Contrast: {contrast}")
 
     if input_path.is_file():
         pipeline.process_single(input_path)
