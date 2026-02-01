@@ -53,10 +53,10 @@ def _denoise(image: np.ndarray, strength: int) -> np.ndarray:
     denoised = cv2.fastNlMeansDenoisingColored(
         bgr,
         None,
-        h=strength,
-        hForColorComponents=strength,
-        templateWindowSize=7,
-        searchWindowSize=21,
+        strength,       # h (luminance)
+        strength,       # hColor (color components)
+        7,              # templateWindowSize
+        21,             # searchWindowSize
     )
 
     return cv2.cvtColor(denoised, cv2.COLOR_BGR2RGB)

@@ -47,6 +47,8 @@ htmlcov/
 # Output directories (processed images)
 output/
 processed/
+test_output/
+test_images/
 
 # Model cache (large files)
 models/
