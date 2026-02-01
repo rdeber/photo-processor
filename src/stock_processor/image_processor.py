@@ -180,17 +180,18 @@ def _apply_rotation_correction(image: np.ndarray, mode: str) -> np.ndarray:
     h, w = image.shape[:2]
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-    # Edge detection
-    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    # Edge detection with lower thresholds for more edges
+    edges = cv2.Canny(gray, 30, 100, apertureSize=3)
 
-    # Detect lines using Hough transform
+    # Detect lines using Hough transform with relaxed parameters
+    min_line_len = min(w, h) // 12  # Shorter minimum line length
     lines = cv2.HoughLinesP(
         edges,
         rho=1,
         theta=np.pi / 180,
-        threshold=100,
-        minLineLength=min(w, h) // 8,
-        maxLineGap=20,
+        threshold=50,  # Lower threshold for more line detection
+        minLineLength=min_line_len,
+        maxLineGap=30,  # Larger gap tolerance
     )
 
     if lines is None:
@@ -230,7 +231,7 @@ def _apply_rotation_correction(image: np.ndarray, mode: str) -> np.ndarray:
             rotation_angle = -v_correction
 
     # Only apply if correction is meaningful but not too extreme
-    if abs(rotation_angle) < 0.1 or abs(rotation_angle) > 15:
+    if abs(rotation_angle) < 0.05 or abs(rotation_angle) > 15:
         return image
 
     # Apply rotation
@@ -274,17 +275,18 @@ def _apply_perspective_correction(image: np.ndarray) -> np.ndarray:
     h, w = image.shape[:2]
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-    # Edge detection
-    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+    # Edge detection with relaxed thresholds
+    edges = cv2.Canny(gray, 30, 100, apertureSize=3)
 
-    # Detect lines
+    # Detect lines with relaxed parameters
+    min_line_len = min(w, h) // 10
     lines = cv2.HoughLinesP(
         edges,
         rho=1,
         theta=np.pi / 180,
-        threshold=80,
-        minLineLength=min(w, h) // 6,
-        maxLineGap=30,
+        threshold=40,
+        minLineLength=min_line_len,
+        maxLineGap=40,
     )
 
     if lines is None:
@@ -310,7 +312,7 @@ def _apply_perspective_correction(image: np.ndarray) -> np.ndarray:
                 right_angles.append(deviation)
 
     # Need lines on both sides to detect convergence
-    if len(left_angles) < 3 or len(right_angles) < 3:
+    if len(left_angles) < 2 or len(right_angles) < 2:
         return image
 
     left_median = np.median(left_angles)
@@ -321,7 +323,7 @@ def _apply_perspective_correction(image: np.ndarray) -> np.ndarray:
     convergence = left_median - right_median
 
     # Only correct if there's meaningful convergence (but not extreme)
-    if abs(convergence) < 1.0 or abs(convergence) > 20:
+    if abs(convergence) < 0.5 or abs(convergence) > 25:
         return image
 
     # Calculate perspective correction strength
