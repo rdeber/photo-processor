@@ -230,6 +230,7 @@ All image processing runs locally - no cloud compute costs. Only API costs are f
 ### Git Strategy
 - **Frequent commits:** Small, logical commits at each milestone
 - **Push regularly:** Keep GitHub repo up to date throughout development
+- **NO CO-AUTHOR LINES:** Never add "Co-Authored-By" to commit messages. Ryan is the sole author.
 - **Commit checkpoints:**
   - Project scaffolding (pyproject.toml, structure)
   - Each module as it becomes functional
