@@ -152,15 +152,31 @@ def _auto_straighten(image: np.ndarray, mode: str = "auto") -> np.ndarray:
     """Automatically straighten image based on detected lines.
 
     Uses Hough line detection to find dominant horizontal and vertical lines,
-    then rotates/corrects the image to level them.
+    then applies rotation and perspective correction.
 
     Args:
         image: Input RGB image
-        mode: "auto" (both H+V), "horizontal" (horizon only), "vertical" (verticals only)
+        mode: "auto" (H+V+perspective), "horizontal" (horizon only),
+              "vertical" (verticals only), "none" (skip)
 
     Returns:
         Straightened and cropped image
     """
+    if mode == "none":
+        return image
+
+    # Step 1: Apply rotation correction (horizontal/vertical leveling)
+    image = _apply_rotation_correction(image, mode)
+
+    # Step 2: Apply perspective correction (auto mode only)
+    if mode == "auto":
+        image = _apply_perspective_correction(image)
+
+    return image
+
+
+def _apply_rotation_correction(image: np.ndarray, mode: str) -> np.ndarray:
+    """Apply rotation to level horizon and/or verticals."""
     h, w = image.shape[:2]
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
@@ -190,14 +206,12 @@ def _auto_straighten(image: np.ndarray, mode: str = "auto") -> np.ndarray:
 
         # Horizontal lines: angles near 0 or 180
         if abs(angle) < 30 or abs(angle) > 150:
-            # Normalize to deviation from horizontal
             if abs(angle) > 90:
                 angle = angle - 180 if angle > 0 else angle + 180
             horizontal_angles.append(angle)
 
         # Vertical lines: angles near 90 or -90
         elif 60 < abs(angle) < 120:
-            # Normalize to deviation from vertical
             deviation = angle - 90 if angle > 0 else angle + 90
             vertical_angles.append(deviation)
 
@@ -205,13 +219,11 @@ def _auto_straighten(image: np.ndarray, mode: str = "auto") -> np.ndarray:
     rotation_angle = 0.0
 
     if mode in ("auto", "horizontal") and horizontal_angles:
-        # Use median to be robust against outliers
         h_correction = np.median(horizontal_angles)
         rotation_angle = -h_correction
 
     if mode in ("auto", "vertical") and vertical_angles:
         v_correction = np.median(vertical_angles)
-        # For auto mode, average with horizontal if both detected
         if mode == "auto" and horizontal_angles:
             rotation_angle = (rotation_angle - v_correction) / 2
         else:
@@ -225,17 +237,14 @@ def _auto_straighten(image: np.ndarray, mode: str = "auto") -> np.ndarray:
     center = (w // 2, h // 2)
     rotation_matrix = cv2.getRotationMatrix2D(center, rotation_angle, 1.0)
 
-    # Calculate new bounding box to avoid cropping
     cos_angle = abs(np.cos(np.radians(rotation_angle)))
     sin_angle = abs(np.sin(np.radians(rotation_angle)))
     new_w = int(h * sin_angle + w * cos_angle)
     new_h = int(h * cos_angle + w * sin_angle)
 
-    # Adjust rotation matrix for new size
     rotation_matrix[0, 2] += (new_w - w) / 2
     rotation_matrix[1, 2] += (new_h - h) / 2
 
-    # Rotate with white background (will be cropped)
     rotated = cv2.warpAffine(
         image,
         rotation_matrix,
@@ -243,18 +252,151 @@ def _auto_straighten(image: np.ndarray, mode: str = "auto") -> np.ndarray:
         borderMode=cv2.BORDER_REPLICATE,
     )
 
-    # Crop to remove border artifacts - calculate largest inscribed rectangle
+    # Crop to remove border artifacts
     crop_margin = int(max(w, h) * abs(np.sin(np.radians(rotation_angle))))
     crop_x = crop_margin
     crop_y = crop_margin
     crop_w = new_w - 2 * crop_margin
     crop_h = new_h - 2 * crop_margin
 
-    # Ensure valid crop dimensions
     if crop_w > 0 and crop_h > 0:
         rotated = rotated[crop_y : crop_y + crop_h, crop_x : crop_x + crop_w]
 
     return rotated
+
+
+def _apply_perspective_correction(image: np.ndarray) -> np.ndarray:
+    """Correct perspective distortion from converging vertical lines.
+
+    Detects vertical lines that converge toward a vanishing point
+    and applies a perspective transform to make them parallel.
+    """
+    h, w = image.shape[:2]
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    # Edge detection
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+
+    # Detect lines
+    lines = cv2.HoughLinesP(
+        edges,
+        rho=1,
+        theta=np.pi / 180,
+        threshold=80,
+        minLineLength=min(w, h) // 6,
+        maxLineGap=30,
+    )
+
+    if lines is None:
+        return image
+
+    # Find vertical lines and their angles
+    left_angles = []  # Lines on left half
+    right_angles = []  # Lines on right half
+
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        angle = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+
+        # Only consider near-vertical lines (60-120 degrees)
+        if 60 < abs(angle) < 120:
+            mid_x = (x1 + x2) / 2
+            # Deviation from perfect vertical (90 degrees)
+            deviation = angle - 90 if angle > 0 else angle + 90
+
+            if mid_x < w / 2:
+                left_angles.append(deviation)
+            else:
+                right_angles.append(deviation)
+
+    # Need lines on both sides to detect convergence
+    if len(left_angles) < 3 or len(right_angles) < 3:
+        return image
+
+    left_median = np.median(left_angles)
+    right_median = np.median(right_angles)
+
+    # Convergence: left lines lean right (+), right lines lean left (-)
+    # Or vice versa for downward convergence
+    convergence = left_median - right_median
+
+    # Only correct if there's meaningful convergence (but not extreme)
+    if abs(convergence) < 1.0 or abs(convergence) > 20:
+        return image
+
+    # Calculate perspective correction strength
+    # Positive convergence = lines converge upward, need to widen top
+    # Negative convergence = lines converge downward, need to widen bottom
+    correction_factor = convergence * 0.002  # Scale factor for subtle correction
+
+    # Define source points (original corners)
+    src_pts = np.float32([
+        [0, 0],           # Top-left
+        [w, 0],           # Top-right
+        [w, h],           # Bottom-right
+        [0, h],           # Bottom-left
+    ])
+
+    # Calculate horizontal shift for perspective correction
+    shift = int(w * abs(correction_factor))
+
+    if convergence > 0:
+        # Converging upward - widen top
+        dst_pts = np.float32([
+            [-shift, 0],          # Top-left moves left
+            [w + shift, 0],       # Top-right moves right
+            [w, h],               # Bottom-right stays
+            [0, h],               # Bottom-left stays
+        ])
+    else:
+        # Converging downward - widen bottom
+        dst_pts = np.float32([
+            [0, 0],               # Top-left stays
+            [w, 0],               # Top-right stays
+            [w + shift, h],       # Bottom-right moves right
+            [-shift, h],          # Bottom-left moves left
+        ])
+
+    # Calculate perspective transform matrix
+    matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
+
+    # Calculate new dimensions to contain the transformed image
+    new_w = w + 2 * shift
+    new_h = h
+
+    # Adjust destination points for the larger canvas
+    if convergence > 0:
+        dst_pts = np.float32([
+            [0, 0],
+            [new_w, 0],
+            [new_w - shift, h],
+            [shift, h],
+        ])
+    else:
+        dst_pts = np.float32([
+            [shift, 0],
+            [new_w - shift, 0],
+            [new_w, h],
+            [0, h],
+        ])
+
+    matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
+
+    # Apply perspective transform
+    corrected = cv2.warpPerspective(
+        image,
+        matrix,
+        (new_w, new_h),
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+
+    # Crop to remove stretched edges
+    crop_x = shift
+    crop_w = w
+    if crop_x >= 0 and crop_x + crop_w <= new_w:
+        corrected = corrected[:, crop_x : crop_x + crop_w]
+
+    return corrected
 
 
 def _denoise(image: np.ndarray, strength: int) -> np.ndarray:

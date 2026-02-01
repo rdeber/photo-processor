@@ -5,7 +5,7 @@ Automated stock photography processing pipeline for Adobe Stock, Shutterstock, a
 ## Features
 
 - **RAW Processing**: Supports Canon CR2, Google Pixel DNG, and standard JPEG/PNG
-- **Auto Straighten**: Automatic horizon leveling and vertical correction
+- **Auto Straighten**: Automatic horizon, vertical, and perspective correction
 - **Auto Exposure**: Automatic white balance and brightness/contrast correction
 - **Traditional Image Processing**: Sharpen, denoise, resize (non-AI, photorealistic)
 - **Face Anonymization**: Automatic face detection and blurring
@@ -71,7 +71,7 @@ stock-process <input> [OPTIONS]
 | `--output` | `-o` | `./processed` | Output directory for processed images |
 | `--brightness` | `-b` | `0.45` | Target brightness (0-1 scale) |
 | `--contrast` | | `1.1` | Contrast strength (1.0 = no change) |
-| `--straighten` | `-s` | `auto` | Geometry correction: auto, horizontal, vertical, none |
+| `--straighten` | `-s` | `auto` | Geometry: auto (H+V+perspective), horizontal, vertical, none |
 | `--min-size` | | `4000` | Minimum dimension in pixels |
 | `--config` | `-c` | | Path to custom config file |
 | `--no-face-blur` | | | Disable face detection and blurring |
@@ -140,7 +140,7 @@ Settings can be configured via YAML file. The default config is at `config/defau
 | `target_brightness` | `0.45` | Target mean brightness (0-1 scale) |
 | `contrast_strength` | `1.1` | Contrast multiplier (1.0 = no change) |
 | **Geometry** | | |
-| `straighten_mode` | `auto` | auto, horizontal, vertical, or none |
+| `straighten_mode` | `auto` | auto (H+V+perspective), horizontal, vertical, none |
 | **Metadata** | | |
 | `keywords_min` | `42` | Minimum keywords to generate |
 | `keywords_max` | `47` | Maximum keywords to generate |
@@ -160,7 +160,7 @@ auto_exposure: true
 target_brightness: 0.50
 contrast_strength: 1.15
 
-# Geometry - auto levels horizon + verticals
+# Geometry - auto levels horizon + verticals + perspective
 straighten_mode: auto
 
 # Processing
