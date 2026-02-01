@@ -1,0 +1,25 @@
+# Stock Photo Processor - Default Configuration
+
+# Output settings
+output_quality: 100  # JPEG quality (1-100, 100 = no compression)
+min_dimension: 4000  # Minimum pixels on longest edge
+
+# Face blurring
+face_blur: true
+face_blur_strength: 25  # Gaussian blur kernel size
+
+# Logo/trademark removal
+remove_logos: true
+remove_signs: true
+
+# Image processing (traditional, non-AI)
+sharpen_amount: 1.0  # Unsharp mask intensity (0 = none)
+denoise_strength: 5  # Non-local means denoising (0 = none)
+
+# Metadata generation
+keywords_min: 42
+keywords_max: 47
+
+# Author information
+author_name: "Ryan DeBerardinis"
+copyright_holder: "Ryan DeBerardinis"

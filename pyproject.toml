@@ -1,0 +1,72 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stock-processor"
+version = "0.1.0"
+description = "Automated stock photography processing pipeline"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Ryan DeBerardinis" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    # RAW processing
+    "rawpy>=0.19.0",
+
+    # Image processing (traditional, non-AI)
+    "Pillow>=10.0.0",
+    "opencv-python>=4.8.0",
+    "colour-science>=0.4.0",
+
+    # Face detection
+    "face-recognition>=1.3.0",
+
+    # AI - Claude Vision API
+    "anthropic>=0.40.0",
+
+    # AI - Logo detection and removal
+    "transformers>=4.36.0",
+    "torch>=2.0.0",
+    "segment-anything @ git+https://github.com/facebookresearch/segment-anything.git",
+
+    # Inpainting
+    "simple-lama-inpainting>=0.1.0",
+
+    # Metadata embedding
+    "piexif>=1.1.3",
+    "iptcinfo3>=2.1.0",
+
+    # CLI
+    "click>=8.1.0",
+    "rich>=13.0.0",
+
+    # Configuration
+    "pyyaml>=6.0",
+    "pydantic>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+stock-process = "stock_processor.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stock_processor"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
