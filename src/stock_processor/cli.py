@@ -1,8 +1,15 @@
 """Command-line interface for stock photo processor."""
 
-import click
+import os
 from pathlib import Path
+
+import click
+from dotenv import load_dotenv
 from rich.console import Console
+
+# Load environment variables from .env file
+# Searches current directory and parents
+load_dotenv()
 
 console = Console()
 
